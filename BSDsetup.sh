@@ -34,28 +34,9 @@ OS_VERSION='11.0-RELEASE'
     fi
   fi
 
-resolv.conf() {
+configurations_files() {
 
-echo "Checking if resolv.conf file is set..."
-if [ ! -e "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf" ]; then
-      echo "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf doesn't exist."
-cat <<EOF >> "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf"
-nameserver 213.186.33.99
-EOF
-else
-    if [ ! -s "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf" ]; then
-    echo "File /${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf exists already but is empty..."
-    echo "Adding proper DNS record."
-cat <<EOF >> "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf"
-nameserver 213.186.33.99
-EOF
-    else
-      echo "File /${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf exists already and has proper DNS."
-    fi
-fi
 
-}
-rc.conf() {
         echo "Checking if rc.conf file is set..."
           if [ ! -e "/${JAIL_DATASET}/${JAIL_NAME}/etc/rc.conf" ]; then
             echo "/${JAIL_DATASET}/${JAIL_NAME}/etc/rc.conf doesn't exist. Creating it."
@@ -84,6 +65,26 @@ EOF
         else
           echo "File /${JAIL_DATASET}/${JAIL_NAME}/etc/rc.conf exists already."
         fi
+
+
+echo "Checking if resolv.conf file is set..."
+      if [ ! -e "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf" ]; then
+        echo "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf doesn't exist."
+        cat <<EOF >> "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf"
+nameserver 213.186.33.99
+EOF
+      else
+          if [ ! -s "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf" ]; then
+            echo "File /${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf exists already but is empty..."
+            echo "Adding proper DNS record."
+          cat <<EOF >> "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf"
+nameserver 213.186.33.99
+EOF
+          else
+            echo "File /${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf exists already and has proper DNS."
+          fi
+      fi
+
 }      ## WE can NOW launch the jail
 
 
@@ -127,17 +128,26 @@ remove_dataset() {
 
 create_jail() {
 
+  cd /tmp
+
   # fetch base packages
   fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/amd64/$OS_VERSION/base.txz
   fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/amd64/$OS_VERSION/kernel.txz
 
+  if $(zfs get -H -o value mountpoint ${JAIL_DATASET}/${JAIL_NAME}) != /${JAIL_DATASET}/${JAIL_NAME}; then
+    tar --unlink -Jxpf base.txz -C $(zfs get -H -o value mountpoint ${JAIL_DATASET}/${JAIL_NAME})
+    tar --unlink -Jxpf kernel.txz -C $(zfs get -H -o value mountpoint ${JAIL_DATASET}/${JAIL_NAME})
+
+    rm -rvf /tmp/base.txz
+    rm -rvf /tmp/kernel.txz
+  else
   # extracting base packages ; make we are in the right jail directory as a safeguard
-  tar --unlink -Jxpf base.txz -C /$JAIL_DATASET/$JAIL_NAME
-  tar --unlink -Jxpf kernel.txz -C /$JAIL_DATASET/$JAIL_NAME
+    tar --unlink -Jxpf base.txz -C /$JAIL_DATASET/$JAIL_NAME
+    tar --unlink -Jxpf kernel.txz -C /$JAIL_DATASET/$JAIL_NAME
 
-  rm -rvf /$JAIL_DATASET/$JAIL_NAME/base.txz
-  rm -rvf /$JAIL_DATASET/$JAIL_NAME/kernel.txz
-
+    rm -rvf /tmp/base.txz
+    rm -rvf /tmp/kernel.txz
+  done
 
   echo "Checking fstab.${JAIL_NAME}..."
   if [ ! -e "/etc/fstab.${JAIL_NAME}" ]; then
@@ -146,8 +156,7 @@ create_jail() {
   else
     echo "fstab.${JAIL_NAME} already exists."
   fi
-  rc.conf
-  resolv.conf
+  configurations_files
   ## WE can NOW launch the jail
 }
 
