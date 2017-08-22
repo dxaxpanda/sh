@@ -53,7 +53,7 @@ add_array() {
 
 ## Début
 
-echo "Lancement du script d'upgrade FreeBSD. Plusieurs informations sont collectés afin de permettre au script d'atteindre son objectif."
+echo "Lancement du script de backup FreeBSD. Plusieurs informations sont collectés afin de permettre au script d'atteindre son objectif."
 
 ## prompt the users with statement
 string="Veuillez Renseignez le dossier de backup: "

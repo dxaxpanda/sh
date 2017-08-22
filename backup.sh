@@ -1,17 +1,28 @@
 #!/bin/sh
 
-## backup des répertoires importants
-wd=~  /backup
-users_home=/usr/home/*
-groups=/etc/group
-mdp=/etc/passwd
-master=/etc/master.passwd
-old_server_ip=51.254.227.134
-old_server_port=2234
-user=jmirre
-new_server_ip=51.254.227.148
-new_server_port=221
+## backup des datasets zfs importants
+
+# Datasets required according to regex
+DATASETS=$(zfs list -t snapshot | grep -Ev 'zjails|NAME' | awk '{print $1}')
+REMOTE_USER="jmirre"
+REMOTE_SERVER='10.0.0.250'
+REMOTE_PORT='222'
+COMPRESION=gzip
 
 
-# copie fichiers importants HOST
-scp -r -P $old_server_port $user@$old_server_ip:$wd
+
+# Backing up all datasets
+for SET in ${DATASETS}; do
+    zfs send ${SET} | ${COMPRESSION} | \
+    ssh -p ${REMOTE_PORT} \
+    ${REMOTE_USER}@${REMOTE_SERVER} \
+     "cat > ${SET}.gz"
+done
+
+# /* TO DO
+# - Add error handling
+#
+#
+# ...
+#
+# */

@@ -4,6 +4,7 @@
 
 ## valable pour les jails ou host
 
+## déclaration des variables utiles ; A FAIRE passage en arguments CMD des variables
 family=''
 upgrade_version=''
 current_version=''
@@ -12,15 +13,21 @@ echo "Script d'automatisation d'upgrade FreeBSD."
 
 read -p "Veuillez renseigner le type de serveur que vous voulez mettre à jour: host ou jail" $family
 
-fetch() {
+## FUNCTIONS
+
+fetch() { # fetch update
   freebsd-update fetch
 }
-install() {
+install() { # install update
   freebsd-update install
 }
-upgrade() {
+
+upgrade() { # upgrade function ; depends of the previous variables initialized
+            # act differently if jail or host
   case $family in
     jail*)
+            ## TO DO
+      ;;
 
     host*)
       if [ $current_version == "10.0-RELEASE" ]; then
@@ -35,10 +42,17 @@ upgrade() {
       echo "Version 10.3-RELEASE est la prochaine mise à jour à effectuer pour "
       upgrade_version="10.3-RELEASE"
       freebsd-update upgrade -r $upgrade_version
-    else [ $current_version == "10.3-RELEASE" ]; then
+    else if [ $current_version == "10.3-RELEASE" ]; then
       echo "Version 11.0-RELEASE est la prochaine mise à jour à effectuer pour "
       upgrade_version="11.0-RELEASE"
       freebsd-update upgrade -r $upgrade_version
+
+    fi
+      ;;
+
+    *) # reste
+
+      ;;
 
   esac
 
@@ -47,6 +61,8 @@ upgrade() {
 }
 
 
+
+## check what to do if jail or host ; TO DO
 
 while [ $family != jail || $family != host ]; do
 
