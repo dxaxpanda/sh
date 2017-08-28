@@ -4,7 +4,8 @@
 ## script d'automatisation de creation de jail FREEBSD
 ## prend en parametre le dataset de jail à créer et le nom de la jail
 
-set -exv
+set -e
+# Debug set -exv
 
 trap cleanup 0 1 2 3 6 15
 
@@ -19,19 +20,20 @@ TMPDIR=$(mktemp -d /tmp/${JAIL_NAME}.XXXX) || exit 1
 
 usage() {
   echo -e $1
-  echo -e "You need to invoke the script as such : $0 <jail_action> <jail_name> [ <jail_root_dataset> <jail_dataset> | only for create and remove ]."
+  echo -e "You need to invoke the script as such : $0 <jail_action> <jail_name> \
+  [ <jail_root_dataset> <jail_dataset> | only for create and remove ].\n"
 }
 
 configurations_files() {
-        echo -e "Checking if rc.conf file is set..."
+        echo -e "Checking if rc.conf file is set... \n"
           if [ ! -e "/${JAIL_DATASET}/${JAIL_NAME}/etc/rc.conf" ]; then
-            echo -e "/${JAIL_DATASET}/${JAIL_NAME}/etc/rc.conf doesn't exist. Creating it."
+            echo -e "/${JAIL_DATASET}/${JAIL_NAME}/etc/rc.conf doesn't exist. Creating it.\n"
 cat <<EOF >> "/${JAIL_DATASET}/${JAIL_NAME}/etc/rc.conf"
 # location: base jail
 ###
 # Jail stuff
 ###
-hostname="${JAIL_NAME}-preprod.wincomparator.com"
+hostname="${JAIL_NAME}.jgraf.skores.eu"
 # Shouldn't run sendmail
 sendmail_enable="NONE"
 clear_tmp_enable="YES"
@@ -49,37 +51,38 @@ sshd_enable="YES"
 EOF
 
         else
-          echo -e "File /${JAIL_DATASET}/${JAIL_NAME}/etc/rc.conf exists already."
+          echo -e "File /${JAIL_DATASET}/${JAIL_NAME}/etc/rc.conf exists already.\n"
         fi
 
 
-echo -e "Checking if resolv.conf file is set..."
+echo -e "Checking if resolv.conf file is set...\n"
       if [ ! -e "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf" ]; then
-        echo -e "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf doesn't exist. Creating it."
-        cat <<EOF >> "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf"
+        echo -e "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf doesn't exist.\
+         Creating it.\n"
+        cat <<EOF >> "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf\n"
 nameserver 213.186.33.99
 EOF
       else
           if [ ! -s "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf" ]; then
-            echo -e "File /${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf exists already but is empty..."
-            echo -e "Adding proper DNS record."
+            echo -e "File /${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf exists already but is empty...\n"
+            echo -e "Adding proper DNS record.\n"
           cat <<EOF >> "/${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf"
 nameserver 213.186.33.99
 EOF
           else
-            echo -e "File /${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf exists already and has proper DNS."
+            echo -e "File /${JAIL_DATASET}/${JAIL_NAME}/etc/resolv.conf exists already and has proper DNS.\n"
           fi
       fi
 
-      echo -e "[!] --- Checking if ${JAIL_NAME} is already configured inside /etc/jail.conf ---"
-      if grep -q ${JAIL_NAME} /etc/jail.conf; then
+      echo -e "[!] --- Checking if ${JAIL_NAME} is already configured inside /etc/jail.conf ---\n"
+      if grep -Eq "^${JAIL_NAME}.*{$" /etc/jail.conf; then
         echo -e "${JAIL_NAME} is already set. Continuing"
       else
         echo -e "[!] --- Adding parameters for ${JAIL_NAME} ---"
         cat <<END >> "/etc/jail.conf"
 ${JAIL_NAME} {
         persist;
-        ip4.inherit;
+        ip4=inherit;
         mount.devfs;
 }
 END
@@ -106,8 +109,12 @@ create_dataset() {
       echo -e " An ERROR occured. return code : $?"
       exit $?
     else
-      echo -e "Jail dataset ${JAIL_ROOT_DATASET}/${JAIL_DATASET}/${JAIL_NAME} successfully created."
-      zfs list |grep -e "NAME" -e "${JAIL_ROOT_DATASET}/${JAIL_DATASET}/${JAIL_NAME}"
+        if zfs list |grep -q -e "NAME" -e "${JAIL_ROOT_DATASET}/${JAIL_DATASET}/${JAIL_NAME}"; then
+          echo -e "Jail dataset ${JAIL_ROOT_DATASET}/${JAIL_DATASET}/${JAIL_NAME} successfully created."
+        else
+          echo -e "Jail dataset doesn't exist. Exiting"
+          exit 1
+        fi
     fi
   fi
 
@@ -133,11 +140,14 @@ create_jail() {
   fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/amd64/$OS_VERSION/base.txz -o ${TMPDIR}
   fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/amd64/$OS_VERSION/kernel.txz -o ${TMPDIR}
 
-  if [ $(zfs get -H -o value mountpoint ${JAIL_ROOT_DATASET}/${JAIL_DATASET}/${JAIL_NAME}) != /${JAIL_DATASET}/${JAIL_NAME} ]; then
+  if [ $(zfs get -H -o value mountpoint \
+  ${JAIL_ROOT_DATASET}/${JAIL_DATASET}/${JAIL_NAME}) != /${JAIL_DATASET}/${JAIL_NAME} ]; then
 
     echo -e "[!] --- Extracting files to /${JAIL_DATASET}/${JAIL_NAME} ---"
-    tar --unlink -Jxpf ${TMPDIR}/base.txz -C $(zfs get -H -o value mountpoint ${JAIL_ROOT_DATASET}/${JAIL_DATASET}/${JAIL_NAME})
-    tar --unlink -Jxpf ${TMPDIR}/kernel.txz -C $(zfs get -H -o value mountpoint ${JAIL_ROOT_DATASET}/${JAIL_DATASET}/${JAIL_NAME})
+    tar --unlink -Jxpf ${TMPDIR}/base.txz -C \
+    $(zfs get -H -o value mountpoint ${JAIL_ROOT_DATASET}/${JAIL_DATASET}/${JAIL_NAME})
+    tar --unlink -Jxpf ${TMPDIR}/kernel.txz -C \
+    $(zfs get -H -o value mountpoint ${JAIL_ROOT_DATASET}/${JAIL_DATASET}/${JAIL_NAME})
   else
   # extracting base packages ; make we are in the right jail directory as a safeguard
   echo -e "[!] --- Extracing files to /${JAIL_DATASET}/${JAIL_NAME}... --- [!]"
@@ -189,6 +199,7 @@ cleanup() {
   echo -e "[!] --- Exit incoming .. attempting to cleanup. ---"
   if [ -e ${TMPDIR} ]; then
     rm -rvf ${TMPDIR}
+  fi
   echo -e " [!] --- Done cleaning up ... Exiting. ---"
 }
 
@@ -202,12 +213,18 @@ cleanup() {
     exit 1
   fi
 
-  if [ "${JAIL_ACTION}" != start -a "${JAIL_ACTION}" != stop -a "${JAIL_ACTION}" != create -a "${JAIL_ACTION}" != remove  ]; then
+  if [ "${JAIL_ACTION}" != start \
+  -a "${JAIL_ACTION}" != stop \
+  -a "${JAIL_ACTION}" != create \
+  -a "${JAIL_ACTION}" != remove  ]; then
     usage "Wrong Actions passed to the script."
     exit 1
   else
-      if [ "${JAIL_ACTION}" == create || "${JAIL_ACTION}" == remove ] && [ -z ${JAIL_ROOT_DATASET}/${JAIL_DATASET} ]; then
-    usage "You provided ${JAIL_ACTION} as Action. When passing create or remove as argument you need to also pass a jail dataset name."
+      if [ "${JAIL_ACTION}" == create ] || \
+       ["${JAIL_ACTION}" == remove ] && \
+       [ -z ${JAIL_ROOT_DATASET}/${JAIL_DATASET} ]; then
+    usage "You provided ${JAIL_ACTION} as Action. \
+    When passing create or remove as argument you need to also pass a jail dataset name."
       else
     echo -e "Script initializing with the following parameters:
       $1 jail on $3 dataset. Current OS_VERSION is ${OS_VERSION}."
