@@ -18,7 +18,7 @@ fi
 
 ## Loop through all available databases and dump it gzip compressed
 for db in $databases; do
-  $MYSQLDUMP --force --user=$MYSQL_USER -p$MYSQL_PASSWORD -h $MYSQL_SERVER --databases $db | gzip > "$BACKUP_DIR/$TIMESTAMP/$db-$TIMESTAMP.sql.gz"
+  $MYSQLDUMP --force --user=$MYSQL_USER -p$MYSQL_PASSWORD -h $MYSQL_SERVER --databases $db | gzip > "$BACKUP_DIR/$TIMESTAMP/$db.sql.gz"
 done
 #bCKuPUsEr! user
 #BckUpuSeR! mysql
