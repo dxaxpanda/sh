@@ -107,6 +107,10 @@ cat << EOF > /mnt/etc/fstab
  /dev/gpt/swap1                 none                    swap    sw              0       0
 EOF
 
+cat << EOF > /mnt/etc/resolv.conf
+${DNS}
+EOF
+
 cp /tmp/zpool.cache /mnt/boot/zfs/zpool.cache
 
 #vi /mnt/etc/ssh/sshd_config
