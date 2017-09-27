@@ -41,20 +41,20 @@ kldload zfs
 zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot gpt/disk0 
 
 zfs set mountpoint=/mnt/ zroot
-zfs create -o mountpoint=/mnt/usr zroot/usr
-zfs create -o mountpoint=/mnt/var zroot/var
-zfs create -o mountpoint=/mnt/var/mail zroot/var/mail
-zfs create -o mountpoint=/mnt/var/crash zroot/var/crash
-zfs create -o mountpoint=/mnt/var/log zroot/var/log
-zfs create -o mountpoint=/mnt/var/db zroot/var/db
-zfs create -o mountpoint=/mnt/var/db/pkg zroot/var/db/pkg
-zfs create -o mountpoint=/mnt/var/empty zroot/var/empty
-zfs create -o mountpoint=/mnt/var/run zroot/var/run
-zfs create -o mountpoint=/mnt/var/tmp zroot/var/tmp
-zfs create -o mountpoint=/mnt/jails zroot/jails
-zfs create -o mountpoint=/mnt/tmp zroot/tmp
-zfs create -o mountpoint=/mnt/www zroot/www
-zfs create -o mountpoint=/mnt/usr/home zroot/usr/home
+zfs create -o mountpoint=/usr zroot/usr
+zfs create -o mountpoint=/var zroot/var
+zfs create -o mountpoint=/var/mail zroot/var/mail
+zfs create -o mountpoint=/var/crash zroot/var/crash
+zfs create -o mountpoint=/var/log zroot/var/log
+zfs create -o mountpoint=/var/db zroot/var/db
+zfs create -o mountpoint=/var/db/pkg zroot/var/db/pkg
+zfs create -o mountpoint=/var/empty zroot/var/empty
+zfs create -o mountpoint=/var/run zroot/var/run
+zfs create -o mountpoint=/var/tmp zroot/var/tmp
+zfs create -o mountpoint=/jails zroot/jails
+zfs create -o mountpoint=/tmp zroot/tmp
+zfs create -o mountpoint=/www zroot/www
+zfs create -o mountpoint=/usr/home zroot/usr/home
 
 zpool set bootfs=zroot zroot
 zfs set checksum=fletcher4 zroot
