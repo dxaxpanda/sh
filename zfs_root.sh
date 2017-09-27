@@ -45,7 +45,7 @@ kldload zfs
 #zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot mirror gpt/disk0 gpt/disk1
 zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot gpt/disk0 
 
-zfs set mountpoint=/mnt zroot
+zfs set mountpoint=/ zroot
 zfs create -o mountpoint=/usr zroot/usr
 zfs create -o mountpoint=/var zroot/var
 zfs create -o mountpoint=/var/mail zroot/var/mail
@@ -79,7 +79,7 @@ hostid_enable="NO"
 keymap="fr.acc"
 ifconfig_em0="inet ${INET} netmask ${NETMASK} broadcast ${INET}"
 route_net1="-net ${GATEWAY_IP}/32 -iface em0"
-route_net2="${GATEWAY_IP}
+route_net2="${GATEWAY_IP}"
 static_routes="net1 net2"
 defaultrouter="${GATEWAY_IP}"
 fsck_y_enable="YES"
