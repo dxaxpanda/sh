@@ -3,6 +3,9 @@ HOST=$1
 #route="178.33.234.94"
 
 
+## before you need to add the server route which is the esxi IP with the last byte with 254
+#/sbin/route add -net ${GATEWAY_IP}/32 -iface em0
+#/sbin/route add default ${GATEWAY_IP}
 
 ## OVH config
 INET="51.254.227.150"
@@ -13,23 +16,24 @@ DNS="nameserver 213.186.33.99"
 ROUTE_1=""
 ROUTE_2=""
 
+
 zpool destroy -f zroot
 
-gpart destroy -F ada0
-gpart destroy -F ada1
+gpart destroy -F da0
+gpart destroy -F da1
 
-gpart create -s gpt ada0
-gpart create -s gpt ada1
+gpart create -s gpt da0
+gpart create -s gpt da1
 
-gpart add -t freebsd-boot -l boot0 -a 4k -s 512k ada0
-gpart add -t freebsd-swap -l swap0 -a 4k -s 8g ada0
-gpart add -t freebsd-zfs -l disk0 ada0
+gpart add -t freebsd-boot -l boot0 -a 4k -s 512k da0
+gpart add -t freebsd-swap -l swap0 -a 4k -s 8g da0
+gpart add -t freebsd-zfs -l disk0 da0
 
 gpart add -t freebsd-boot -l boot1 -a 4k -s 512k ada1
 gpart add -t freebsd-swap -l swap1 -a 4k -s 8g ada1
 gpart add -t freebsd-zfs -l disk1 ada1
 
-gpart bootcode -b /boot/pmbr -p /boot/gptzfsboot -i 1 ada0
+gpart bootcode -b /boot/pmbr -p /boot/gptzfsboot -i 1 da0
 
 kldload zfs
 
@@ -41,7 +45,7 @@ kldload zfs
 #zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot mirror gpt/disk0 gpt/disk1
 zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot gpt/disk0 
 
-zfs set mountpoint=/mnt/ zroot
+zfs set mountpoint=/mnt zroot
 zfs create -o mountpoint=/usr zroot/usr
 zfs create -o mountpoint=/var zroot/var
 zfs create -o mountpoint=/var/mail zroot/var/mail
