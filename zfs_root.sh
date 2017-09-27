@@ -1,9 +1,17 @@
-
 #!/bin/sh
-
-#host=valencia.sportytrader.com
-#network="inet 178.33.234.94 netmask 255.255.255.0 broadcast 178.33.234.255"
+HOST=$1
 #route="178.33.234.94"
+
+
+## OVH config
+INET="51.254.227.150"
+NETMASK="255.255.255.255"
+GATEWAY_NETWORK="5.135.138.0"
+GATEWAY_IP="5.135.138.254"
+DNS="nameserver 213.186.33.99"
+ROUTE_1=""
+ROUTE_2=""
+
 zpool destroy -f zroot
 
 gpart destroy -F ada0
@@ -23,25 +31,30 @@ gpart add -t freebsd-zfs -l disk1 ada1
 gpart bootcode -b /boot/pmbr -p /boot/gptzfsboot -i 1 ada0
 
 kldload zfs
-sysctl vfs.zfs.min_auto_ashift=12
 
-zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot mirror gpt/disk0 gpt/disk1
+## Align for 4k sector
+#sysctl vfs.zfs.min_auto_ashift=12
 
-zfs set mountpoint=/ zroot
-zfs create -o mountpoint=/usr zroot/usr
-zfs create -o mountpoint=/var zroot/var
-zfs create -o mountpoint=/var/mail zroot/var/mail
-zfs create -o mountpoint=/var/crash zroot/var/crash
-zfs create -o mountpoint=/var/log zroot/var/log
-zfs create -o mountpoint=/var/db zroot/var/db
-zfs create -o mountpoint=/var/db/pkg zroot/var/db/pkg
-zfs create -o mountpoint=/var/empty zroot/var/empty
-zfs create -o mountpoint=/var/run zroot/var/run
-zfs create -o mountpoint=/var/tmp zroot/var/tmp
-zfs create -o mountpoint=/jails zroot/jails
-zfs create -o mountpoint=/tmp zroot/tmp
-zfs create -o mountpoint=/www zroot/www
-zfs create -o mountpoint=/usr/home zroot/usr/home
+## MIRROR
+
+#zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot mirror gpt/disk0 gpt/disk1
+zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot gpt/disk0 
+
+zfs set mountpoint=/mnt/ zroot
+zfs create -o mountpoint=/mnt/usr zroot/usr
+zfs create -o mountpoint=/mnt/var zroot/var
+zfs create -o mountpoint=/mnt/var/mail zroot/var/mail
+zfs create -o mountpoint=/mnt/var/crash zroot/var/crash
+zfs create -o mountpoint=/mnt/var/log zroot/var/log
+zfs create -o mountpoint=/mnt/var/db zroot/var/db
+zfs create -o mountpoint=/mnt/var/db/pkg zroot/var/db/pkg
+zfs create -o mountpoint=/mnt/var/empty zroot/var/empty
+zfs create -o mountpoint=/mnt/var/run zroot/var/run
+zfs create -o mountpoint=/mnt/var/tmp zroot/var/tmp
+zfs create -o mountpoint=/mnt/jails zroot/jails
+zfs create -o mountpoint=/mnt/tmp zroot/tmp
+zfs create -o mountpoint=/mnt/www zroot/www
+zfs create -o mountpoint=/mnt/usr/home zroot/usr/home
 
 zpool set bootfs=zroot zroot
 zfs set checksum=fletcher4 zroot
@@ -55,17 +68,21 @@ tar --unlink -Jxpf kernel.txz -C /mnt
 rm base.txz kernel.txz
 
 cat << EOF > /mnt/etc/rc.conf
-
-hostname="${host}"
+hostname="${HOST}"
 sendmail_enable="NONE"
 hostid_enable="NO"
 keymap="fr.acc"
-ifconfig_em0="${network}"
-defaultrouter="${route}"
+ifconfig_em0="inet ${INET} netmask ${NETMASK} broadcast ${INET}"
+route_net1="-net ${GATEWAY_IP}/32 -iface em0"
+route_net2="${GATEWAY_IP}
+static_routes="net1 net2"
+defaultrouter="${GATEWAY_IP}"
 fsck_y_enable="YES"
 background_fsck="YES"
 zfs_enable="YES"
 sshd_enable="YES"
+jail_enable="YES"
+jail_conf="/etc/jail.conf"
 EOF
 
 cat << EOF > /mnt/boot/loader.conf
