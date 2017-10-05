@@ -1,3 +1,4 @@
+
 #!/bin/sh
 HOST=$1
 #route="178.33.234.94"
@@ -8,42 +9,43 @@ HOST=$1
 #/sbin/route add default ${GATEWAY_IP}
 
 ## OVH config
-INET="51.254.227.150"
+INET="217.182.134.98"
 NETMASK="255.255.255.255"
-GATEWAY_NETWORK="5.135.138.0"
-GATEWAY_IP="5.135.138.254"
+GATEWAY_NETWORK="217.182.134.0"
+GATEWAY_IP="217.182.134.254"
 DNS="nameserver 213.186.33.99"
+VRACK_NET="inet 10.1.0.19 netmask 255.240.0.0 broadcast "
 ROUTE_1=""
 ROUTE_2=""
 
 
 zpool destroy -f zroot
 
-gpart destroy -F da0
-gpart destroy -F da1
+gpart destroy -F ada0
+gpart destroy -F ada1
 
-gpart create -s gpt da0
-gpart create -s gpt da1
+gpart create -s gpt ada0
+gpart create -s gpt ada1
 
-gpart add -t freebsd-boot -l boot0 -a 4k -s 512k da0
-gpart add -t freebsd-swap -l swap0 -a 4k -s 8g da0
-gpart add -t freebsd-zfs -l disk0 da0
+gpart add -t freebsd-boot -l boot0 -a 4k -s 512k ada0
+gpart add -t freebsd-swap -l swap0 -a 4k -s 8g ada0
+gpart add -t freebsd-zfs -l disk0 ada0
 
 gpart add -t freebsd-boot -l boot1 -a 4k -s 512k ada1
 gpart add -t freebsd-swap -l swap1 -a 4k -s 8g ada1
 gpart add -t freebsd-zfs -l disk1 ada1
 
-gpart bootcode -b /boot/pmbr -p /boot/gptzfsboot -i 1 da0
+gpart bootcode -b /boot/pmbr -p /boot/gptzfsboot -i 1 ada0
 
 kldload zfs
 
 ## Align for 4k sector
-#sysctl vfs.zfs.min_auto_ashift=12
+sysctl vfs.zfs.min_auto_ashift=12
 
 ## MIRROR
 
-#zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot mirror gpt/disk0 gpt/disk1
-zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot gpt/disk0 
+zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot mirror gpt/disk0 gpt/disk1
+#zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot gpt/disk0 
 
 zfs set mountpoint=/ zroot
 zfs create -o mountpoint=/usr zroot/usr
@@ -77,17 +79,23 @@ hostname="${HOST}"
 sendmail_enable="NONE"
 hostid_enable="NO"
 keymap="fr.acc"
-ifconfig_em0="inet ${INET} netmask ${NETMASK} broadcast ${INET}"
-route_net1="-net ${GATEWAY_IP}/32 -iface em0"
+ifconfig_igb0="inet ${INET} netmask ${NETMASK} broadcast ${INET}"
+#VRACK CONF
+ifconfig_igb1="inet ${VRACK_IP} netmask ${VRACK_NETMASK} broadcast ${VRACK_IP}"
+route_net1="-net ${GATEWAY_IP}/32 -iface igb0"
 route_net2="${GATEWAY_IP}"
 static_routes="net1 net2"
 defaultrouter="${GATEWAY_IP}"
+
+## Services 
 fsck_y_enable="YES"
 background_fsck="YES"
 zfs_enable="YES"
 sshd_enable="YES"
 jail_enable="YES"
 jail_conf="/etc/jail.conf"
+ntpdate_enable="YES"
+ntpdate_hosts="ntp.ovh.net"
 EOF
 
 cat << EOF > /mnt/boot/loader.conf
@@ -102,9 +110,9 @@ comconsole_port="0x2F8"
 EOF
 
 cat << EOF > /mnt/etc/fstab
- # Device                       Mountpoint              FStype  Options         Dump    Pass#
- /dev/gpt/swap0                 none                    swap    sw              0       0
- /dev/gpt/swap1                 none                    swap    sw              0       0
+# Device                       Mountpoint              FStype  Options         Dump    Pass#
+/dev/gpt/swap0                 none                    swap    sw              0       0
+/dev/gpt/swap1                 none                    swap    sw              0       0
 EOF
 
 cat << EOF > /mnt/etc/resolv.conf
