@@ -1,9 +1,26 @@
 
 #!/bin/sh
-
-#host=valencia.sportytrader.com
-#network="inet 178.33.234.94 netmask 255.255.255.0 broadcast 178.33.234.255"
+HOST=$1
 #route="178.33.234.94"
+
+
+## before you need to add the server route which is the esxi IP with the last byte with 254
+#/sbin/route add -net ${GATEWAY_IP}/32 -iface em0
+#/sbin/route add default ${GATEWAY_IP}
+
+## OVH config
+INET="217.182.134.98"
+NETMASK="255.255.255.255"
+GATEWAY_NETWORK="217.182.134.0"
+GATEWAY_IP="217.182.134.254"
+DNS="nameserver 213.186.33.99"
+VRACK_IP="10.1.0.19"
+VRACK_NETMASK="255.240.0.0"
+VRACK_BROADCAST="10.15.255.255"
+ROUTE_1=""
+ROUTE_2=""
+
+
 zpool destroy -f zroot
 
 gpart destroy -F ada0
@@ -23,9 +40,14 @@ gpart add -t freebsd-zfs -l disk1 ada1
 gpart bootcode -b /boot/pmbr -p /boot/gptzfsboot -i 1 ada0
 
 kldload zfs
+
+## Align for 4k sector
 sysctl vfs.zfs.min_auto_ashift=12
 
+## MIRROR
+
 zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot mirror gpt/disk0 gpt/disk1
+#zpool create -f -m none -o altroot=/mnt -o cachefile=/tmp/zpool.cache -O compress=lz4 -O atime=off zroot gpt/disk0 
 
 zfs set mountpoint=/ zroot
 zfs create -o mountpoint=/usr zroot/usr
@@ -55,17 +77,27 @@ tar --unlink -Jxpf kernel.txz -C /mnt
 rm base.txz kernel.txz
 
 cat << EOF > /mnt/etc/rc.conf
-
-hostname="${host}"
+hostname="${HOST}"
 sendmail_enable="NONE"
 hostid_enable="NO"
 keymap="fr.acc"
-ifconfig_em0="${network}"
-defaultrouter="${route}"
+ifconfig_igb0="inet ${INET} netmask ${NETMASK} broadcast ${INET}"
+#VRACK CONF
+ifconfig_igb1="inet ${VRACK_IP} netmask ${VRACK_NETMASK} broadcast ${VRACK_BROADCAST}"
+route_net1="-net ${GATEWAY_IP}/32 -iface igb0"
+route_net2="${GATEWAY_IP}"
+static_routes="net1 net2"
+defaultrouter="${GATEWAY_IP}"
+
+## Services 
 fsck_y_enable="YES"
 background_fsck="YES"
 zfs_enable="YES"
 sshd_enable="YES"
+jail_enable="YES"
+jail_conf="/etc/jail.conf"
+ntpdate_enable="YES"
+ntpdate_hosts="ntp.ovh.net"
 EOF
 
 cat << EOF > /mnt/boot/loader.conf
@@ -80,9 +112,13 @@ comconsole_port="0x2F8"
 EOF
 
 cat << EOF > /mnt/etc/fstab
- # Device                       Mountpoint              FStype  Options         Dump    Pass#
- /dev/gpt/swap0                 none                    swap    sw              0       0
- /dev/gpt/swap1                 none                    swap    sw              0       0
+# Device                       Mountpoint              FStype  Options         Dump    Pass#
+/dev/gpt/swap0                 none                    swap    sw              0       0
+/dev/gpt/swap1                 none                    swap    sw              0       0
+EOF
+
+cat << EOF > /mnt/etc/resolv.conf
+${DNS}
 EOF
 
 cp /tmp/zpool.cache /mnt/boot/zfs/zpool.cache
